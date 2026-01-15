@@ -57,6 +57,7 @@ create database nerdery_challenge;
 ```
 
 5. Close the database connection:
+
 ```
 \q
 ```
@@ -79,23 +80,33 @@ Now it's your turn to write SQL queries to achieve the following results (You ne
 1. Total money of all the accounts group by types.
 
 ```
-Your query here
+SELECT type, SUM(mount)
+FROM accounts
+GROUP BY type;
 ```
-
 
 2. How many users with at least 2 `CURRENT_ACCOUNT`.
 
 ```
-Your query here
+SELECT COUNT(*) AS users_with_multiple_accounts
+FROM (
+    SELECT u.id
+    FROM users u
+    JOIN accounts a ON u.id = a.user_id
+    GROUP BY u.id
+    HAVING COUNT(*) >= 2
+) sub;
 ```
-
 
 3. List the top five accounts with more money.
 
 ```
-Your query here
-```
+SELECT account_id, mount
+FROM accounts
+ORDER BY mount DESC
+LIMIT 5;
 
+```
 
 4. Get the three users with the most money after making movements.
 
@@ -103,48 +114,49 @@ Your query here
 Your query here
 ```
 
-
-5. In this part you need to create a transaction with the following steps:
+5.  In this part you need to create a transaction with the following steps:
 
     a. First, get the ammount for the account `3b79e403-c788-495a-a8ca-86ad7643afaf` and `fd244313-36e5-4a17-a27c-f8265bc46590` after all their movements.
     b. Add a new movement with the information:
-        from: `3b79e403-c788-495a-a8ca-86ad7643afaf` make a transfer to `fd244313-36e5-4a17-a27c-f8265bc46590`
-        mount: 50.75
+    from: `3b79e403-c788-495a-a8ca-86ad7643afaf` make a transfer to `fd244313-36e5-4a17-a27c-f8265bc46590`
+    mount: 50.75
 
     c. Add a new movement with the information:
-        from: `3b79e403-c788-495a-a8ca-86ad7643afaf` 
-        type: OUT
-        mount: 731823.56
+    from: `3b79e403-c788-495a-a8ca-86ad7643afaf`
+    type: OUT
+    mount: 731823.56
 
         * Note: if the account does not have enough money you need to reject this insert and make a rollback for the entire transaction
-    
+
     d. Put your answer here if the transaction fails(YES/NO):
+
     ```
         Your answer
     ```
 
     e. If the transaction fails, make the correction on step _c_ to avoid the failure:
+
     ```
         Your query
     ```
 
     f. Once the transaction is correct, make a commit
+
     ```
         Your query
     ```
 
     e. How much money the account `fd244313-36e5-4a17-a27c-f8265bc46590` have:
+
     ```
         Your query
     ```
 
-
-6. All the movements and the user information with the account `3b79e403-c788-495a-a8ca-86ad7643afaf`
+6.  All the movements and the user information with the account `3b79e403-c788-495a-a8ca-86ad7643afaf`
 
 ```
 Your query here
 ```
-
 
 7. The name and email of the user with the highest money in all his/her accounts
 
@@ -152,10 +164,8 @@ Your query here
 Your query here
 ```
 
-
 8. Show all the movements for the user `Kaden.Gusikowski@gmail.com` order by account type and created_at on the movements table
 
 ```
 Your query here
 ```
-
