@@ -177,13 +177,13 @@ LIMIT 3;
     d. Put your answer here if the transaction fails(YES/NO):
 
     ```
-        YES
+        NO
     ```
 
     e. If the transaction fails, make the correction on step _c_ to avoid the failure:
 
     ```
-        Your query
+        mount <= 5047.66
     ```
 
     f. Once the transaction is correct, make a commit
@@ -195,23 +195,63 @@ LIMIT 3;
     g. How much money the account `fd244313-36e5-4a17-a27c-f8265bc46590` have:
 
     ```
-        Your query
+        3214
     ```
 
 6.  All the movements and the user information with the account `3b79e403-c788-495a-a8ca-86ad7643afaf`
 
 ```
-Your query here
+
+SELECT u.name || ' ' || u.last_name as account_user, m.type, m.mount FROM users u INNER JOIN accounts a ON a.user_id = u.id LEFT JOIN movements m ON a.id = m.account_f
+rom or a.id = m.account_to WHERE a.id = '3b79e403-c788-495a-a8ca-86ad7643afaf';
 ```
 
 7. The name and email of the user with the highest money in all his/her accounts
 
 ```
-Your query here
+WITH Inflow AS (
+    SELECT a.user_id, SUM(m.mount) as total_received
+    FROM movements m
+    JOIN accounts a ON m.account_to = a.id
+    GROUP BY a.user_id
+),
+Deposits AS (
+    SELECT a.user_id, SUM(m.mount) as total_deposits
+    FROM movements m
+    JOIN accounts a ON m.account_from = a.id
+    WHERE m.type IN ('IN')
+    GROUP BY a.user_id
+),
+InitialBalances AS (
+    SELECT user_id, SUM(mount) as initial_total
+    FROM accounts
+    GROUP BY user_id
+) SELECT u.name || ' ' || u.last_name as user_full_name,
+    u.email,
+    (COALESCE(ib.initial_total, 0) +
+    COALESCE(inf.total_received, 0) +
+    COALESCE(dep.total_deposits, 0)) AS total_balance
+FROM users u
+LEFT JOIN InitialBalances ib ON u.id = ib.user_id
+LEFT JOIN Inflow inf ON u.id = inf.user_id
+LEFT JOIN Deposits dep ON u.id = dep.user_id
+ORDER BY total_balance DESC
+LIMIT 1;
 ```
 
 8. Show all the movements for the user `Kaden.Gusikowski@gmail.com` order by account type and created_at on the movements table
 
 ```
-Your query here
+SELECT
+    a.type,
+    m.created_at,
+    m.mount
+FROM accounts a
+JOIN movements m
+ON
+    m.account_from = a.id
+    or
+    m.account_to = a.id
+LEFT JOIN users u ON a.user_id = u.id
+where email ILIKE 'Kaden.Gusikowski@gmail.com';
 ```
