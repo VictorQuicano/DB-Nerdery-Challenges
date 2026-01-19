@@ -111,7 +111,53 @@ LIMIT 5;
 4. Get the three users with the most money after making movements.
 
 ```
-Your query here
+WITH InitialBalances AS (
+    SELECT user_id, SUM(mount) as initial_total
+    FROM accounts
+    GROUP BY user_id
+),
+Outflow AS (
+    SELECT a.user_id, SUM(m.mount) as total_sent
+    FROM movements m
+    JOIN accounts a ON m.account_from = a.id
+    WHERE m.type NOT IN ('IN')
+    GROUP BY a.user_id
+),
+Inflow AS (
+    SELECT a.user_id, SUM(m.mount) as total_received
+    FROM movements m
+    JOIN accounts a ON m.account_to = a.id
+    GROUP BY a.user_id
+),
+Deposits AS (
+    SELECT a.user_id, SUM(m.mount) as total_deposits
+    FROM movements m
+    JOIN accounts a ON m.account_from = a.id
+    WHERE m.type IN ('IN')
+    GROUP BY a.user_id
+)
+SELECT
+    u.id,
+    u.name,
+    u.last_name,
+    (
+        COALESCE(ib.initial_total, 0) +
+        COALESCE(inf.total_received, 0) -
+        COALESCE(outf.total_sent, 0) +
+        COALESCE(dep.total_deposits, 0)
+    ) AS current_balance,
+    ib.initial_total AS initial_balance,
+    outf.total_sent AS total_outflow,
+    inf.total_received AS total_inflow,
+    dep.total_deposits AS total_deposits
+FROM users u
+LEFT JOIN InitialBalances ib ON u.id = ib.user_id
+LEFT JOIN Outflow outf ON u.id = outf.user_id
+LEFT JOIN Inflow inf ON u.id = inf.user_id
+LEFT JOIN Deposits dep ON u.id = dep.user_id
+ORDER BY current_balance DESC
+LIMIT 3;
+
 ```
 
 5.  In this part you need to create a transaction with the following steps:
@@ -131,7 +177,7 @@ Your query here
     d. Put your answer here if the transaction fails(YES/NO):
 
     ```
-        Your answer
+        YES
     ```
 
     e. If the transaction fails, make the correction on step _c_ to avoid the failure:
@@ -146,7 +192,7 @@ Your query here
         Your query
     ```
 
-    e. How much money the account `fd244313-36e5-4a17-a27c-f8265bc46590` have:
+    g. How much money the account `fd244313-36e5-4a17-a27c-f8265bc46590` have:
 
     ```
         Your query
