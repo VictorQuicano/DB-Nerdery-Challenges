@@ -138,6 +138,37 @@ CREATE TABLE liked_products (
         ON UPDATE CASCADE
 );
 
+-- Discounts
+CREATE TYPE discount_type AS ENUM ('PERCENTAGE', 'FIXED_AMOUNT');
+CREATE TABLE discounts (
+    id SERIAL PRIMARY KEY,
+    code UUID NOT NULL DEFAULT gen_random_uuid(),
+    type discount_type NOT NULL,
+    value DECIMAL(10,2) NOT NULL,
+    starts_at TIMESTAMP NOT NULL,
+    expires_at TIMESTAMP,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TYPE discount_items_type AS ENUM ('PRODUCT', 'CATEGORY');
+CREATE TABLE discount_items (
+    id SERIAL PRIMARY KEY,
+    discount_id INTEGER NOT NULL,
+    item_type discount_items_type NOT NULL,
+    item_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_discount_items_discounts
+        FOREIGN KEY (discount_id)
+        REFERENCES discounts(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+
+);
+
 -- Carts
 CREATE TABLE carts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -160,7 +191,7 @@ CREATE TABLE cart_items (
     cart_id UUID NOT NULL,
     item_id INTEGER NOT NULL,
     quantity INTEGER NOT NULL DEFAULT 1,
-    price FLOAT NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -178,8 +209,7 @@ CREATE TABLE cart_items (
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
 
-    CONSTRAINT chk_quantity_positive CHECK (quantity > 0),
-    CONSTRAINT chk_price_non_negative CHECK (price >= 0)
+    CONSTRAINT chk_quantity_positive CHECK (quantity > 0)
 );
 
 -- Orders
@@ -207,7 +237,7 @@ CREATE TABLE order_items (
     order_id INTEGER NOT NULL,
     item_id INTEGER NOT NULL,
     quantity INTEGER NOT NULL,
-    price FLOAT NOT NULL,
+    price DECIMAL(10,2),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -223,8 +253,67 @@ CREATE TABLE order_items (
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
 
-    CONSTRAINT chk_order_quantity_positive CHECK (quantity > 0),
-    CONSTRAINT chk_order_price_non_negative CHECK (price >= 0)
+    CONSTRAINT chk_order_quantity_positive CHECK (quantity > 0)
+);
+
+-- STRIPE TABLES
+CREATE TYPE payment_status AS ENUM(
+  'PENDING',
+  'PROCESSING',
+  'PAID',
+  'FAILED',
+  'CANCELLED',
+  'REFUNDED'
+);
+CREATE TABLE payments (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    status payment_status NOT NULL,
+    description TEXT,
+    paid_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_payments_orders
+        FOREIGN KEY (order_id)
+        REFERENCES orders(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+CREATE TYPE payment_intent_status AS ENUM (
+  'REQUIRES_PAYMENT_METHOD',
+  'REQUIRES_CONFIRMATION',
+  'REQUIRES_ACTION',
+  'PROCESSING',
+  'SUCCESS',
+  'CANCELED'
+);
+
+CREATE TABLE stripe_webhooks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id VARCHAR(255) UNIQUE NOT NULL,
+    event_type VARCHAR(255) NOT NULL,
+    payment_intent_id VARCHAR(255),
+    payload JSONB NOT NULL,
+    processed BOOLEAN DEFAULT FALSE,
+    received_at TIMESTAMP,
+    processed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE payment_intents (
+    id SERIAL PRIMARY KEY,
+    payment_id INTEGER NOT NULL,
+    stripe_payment_intent_id VARCHAR(255) UNIQUE NOT NULL,
+    status payment_intent_status NOT NULL,
+
+    CONSTRAINT fk_payment_intents_payments
+        FOREIGN KEY (payment_id)
+        REFERENCES payments(id)
+        ON DELETE CASCADE
 );
 
 
@@ -248,3 +337,6 @@ CREATE INDEX idx_products_name ON products(name);
 CREATE INDEX idx_products_price ON products(price);
 CREATE INDEX idx_orders_created_at ON orders(created_at);
 CREATE INDEX idx_users_created_at ON users(created_at);
+CREATE INDEX idx_payments_order_id ON payments(order_id);
+CREATE INDEX idx_payment_intents_payment_id ON payment_intents(payment_id);
+CREATE INDEX idx_stripe_webhooks_event_id ON stripe_webhooks(event_id);

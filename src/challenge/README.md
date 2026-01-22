@@ -55,7 +55,7 @@ You must execute `create_role_permissions.sql` **before** `create_db.sql`, becau
 docker run --name nerdery-container \
   -e POSTGRES_PASSWORD=password123 \
   -p 5432:5432 \
-  -d --rm postgres:13.0
+  -d --rm postgres:15.2
 ```
 
 ---
@@ -71,7 +71,7 @@ docker exec -it -u postgres nerdery-container psql
 ### 3. Create the database
 
 ```
-create database nerdery_challenge;
+create database e_commerce;
 ```
 
 Exit `psql` after creation.
@@ -80,17 +80,17 @@ Exit `psql` after creation.
 
 ### 4. Restore the database structure
 
-First, execute the roles and permissions script:
-
-```
-cat /.../src/create_role_permissions.sql | \
-  docker exec -i nerdery-container psql -U postgres -d e_commerce
-```
-
-Then execute the main schema script:
+First, execute the main schema script:
 
 ```
 cat /.../src/create_db.sql | \
+  docker exec -i nerdery-container psql -U postgres -d e_commerce
+```
+
+Then execute the roles and permissions script:
+
+```
+cat /.../src/create_role_permissions.sql | \
   docker exec -i nerdery-container psql -U postgres -d e_commerce
 ```
 
