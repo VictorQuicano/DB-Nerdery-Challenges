@@ -7,7 +7,7 @@ CREATE TYPE order_status AS ENUM (
 
 -- Create roles table
 CREATE TABLE roles (
-    id SERIAL PRIMARY KEY,
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name VARCHAR(100) NOT NULL UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -15,7 +15,7 @@ CREATE TABLE roles (
 
 -- Create permissions table
 CREATE TABLE permissions (
-    id SERIAL PRIMARY KEY,
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name VARCHAR(100) NOT NULL UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -23,9 +23,9 @@ CREATE TABLE permissions (
 
 -- Create role_permissions junction table
 CREATE TABLE role_permissions (
-    id SERIAL PRIMARY KEY,
-    role_id INTEGER NOT NULL,
-    permission_id INTEGER NOT NULL,
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    role_id BIGINT NOT NULL,
+    permission_id BIGINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_role_permission UNIQUE(role_id, permission_id),
@@ -43,13 +43,13 @@ CREATE TABLE role_permissions (
 
 -- Create users table
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     first_name VARCHAR(100) NOT NULL,
     middle_name VARCHAR(100),
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role_id INTEGER NOT NULL,
+    role_id BIGINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -68,7 +68,7 @@ CREATE TABLE users (
 
 -- Create categories table
 CREATE TABLE categories (
-    id SERIAL PRIMARY KEY,
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -77,12 +77,12 @@ CREATE TABLE categories (
 
 -- Create products table
 CREATE TABLE products (
-    id SERIAL PRIMARY KEY,
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     price DOUBLE PRECISION NOT NULL,
     available BOOLEAN DEFAULT true,
-    category_id INTEGER NOT NULL,
+    category_id BIGINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -98,9 +98,9 @@ CREATE TABLE products (
 
 -- Create product_images table
 CREATE TABLE product_images (
-    id SERIAL PRIMARY KEY,
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     image_url VARCHAR(500) NOT NULL,
-    product_id INTEGER NOT NULL,
+    product_id BIGINT NOT NULL,
     "order" INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -117,9 +117,9 @@ CREATE TABLE product_images (
 
 -- Liked products
 CREATE TABLE liked_products (
-    id SERIAL PRIMARY KEY,
-    user_id UUID NOT NULL,
-    product_id INTEGER NOT NULL,
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    user_id BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -140,9 +140,12 @@ CREATE TABLE liked_products (
 
 -- Discounts
 CREATE TYPE discount_type AS ENUM ('PERCENTAGE', 'FIXED_AMOUNT');
+
+CREATE SEQUENCE IF NOT EXISTS discounts_code_seq;
+
 CREATE TABLE discounts (
-    id SERIAL PRIMARY KEY,
-    code UUID NOT NULL DEFAULT gen_random_uuid(),
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    code BIGINT NOT NULL DEFAULT nextval('discounts_code_seq'),
     type discount_type NOT NULL,
     value DECIMAL(10,2) NOT NULL,
     starts_at TIMESTAMP NOT NULL,
@@ -154,10 +157,10 @@ CREATE TABLE discounts (
 
 CREATE TYPE discount_items_type AS ENUM ('PRODUCT', 'CATEGORY');
 CREATE TABLE discount_items (
-    id SERIAL PRIMARY KEY,
-    discount_id INTEGER NOT NULL,
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    discount_id BIGINT NOT NULL,
     item_type discount_items_type NOT NULL,
-    item_id INTEGER NOT NULL,
+    item_id BIGINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -166,13 +169,12 @@ CREATE TABLE discount_items (
         REFERENCES discounts(id)
         ON DELETE CASCADE
         ON UPDATE CASCADE
-
 );
 
 -- Carts
 CREATE TABLE carts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL,
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    user_id BIGINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -187,11 +189,10 @@ CREATE TABLE carts (
 
 -- Cart items
 CREATE TABLE cart_items (
-    id SERIAL PRIMARY KEY,
-    cart_id UUID NOT NULL,
-    item_id INTEGER NOT NULL,
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    cart_id BIGINT NOT NULL,
+    item_id BIGINT NOT NULL,
     quantity INTEGER NOT NULL DEFAULT 1,
-    price DECIMAL(10,2) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -214,8 +215,8 @@ CREATE TABLE cart_items (
 
 -- Orders
 CREATE TABLE orders (
-    id SERIAL PRIMARY KEY,
-    user_id UUID NOT NULL,
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    user_id BIGINT NOT NULL,
     status order_status DEFAULT 'PENDING',
     total_amount DECIMAL(10, 2) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -233,9 +234,9 @@ CREATE TABLE orders (
 
 -- Order items
 CREATE TABLE order_items (
-    id SERIAL PRIMARY KEY,
-    order_id INTEGER NOT NULL,
-    item_id INTEGER NOT NULL,
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    order_id BIGINT NOT NULL,
+    item_id BIGINT NOT NULL,
     quantity INTEGER NOT NULL,
     price DECIMAL(10,2),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -266,8 +267,8 @@ CREATE TYPE payment_status AS ENUM(
   'REFUNDED'
 );
 CREATE TABLE payments (
-    id SERIAL PRIMARY KEY,
-    order_id INTEGER NOT NULL,
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    order_id BIGINT NOT NULL,
     amount DECIMAL(10,2) NOT NULL,
     status payment_status NOT NULL,
     description TEXT,
@@ -292,7 +293,7 @@ CREATE TYPE payment_intent_status AS ENUM (
 );
 
 CREATE TABLE stripe_webhooks (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     event_id VARCHAR(255) UNIQUE NOT NULL,
     event_type VARCHAR(255) NOT NULL,
     payment_intent_id VARCHAR(255),
@@ -303,10 +304,9 @@ CREATE TABLE stripe_webhooks (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-
 CREATE TABLE payment_intents (
-    id SERIAL PRIMARY KEY,
-    payment_id INTEGER NOT NULL,
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    payment_id BIGINT NOT NULL,
     stripe_payment_intent_id VARCHAR(255) UNIQUE NOT NULL,
     status payment_intent_status NOT NULL,
 
@@ -315,7 +315,6 @@ CREATE TABLE payment_intents (
         REFERENCES payments(id)
         ON DELETE CASCADE
 );
-
 
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_role_id ON users(role_id);
