@@ -74,7 +74,9 @@ Now it's your turn to write SQL querys to achieve the following results:
 1. Count the total number of states in each country.
 
 ```
-SELECT c.name, count(*)
+SELECT
+    c.name,
+    count(*) AS states_count
 FROM countries c
 INNER JOIN states s
 ON c.id = s.country_id
@@ -98,18 +100,18 @@ SELECT COUNT(*) employees_without_bosses FROM employees WHERE supervisor_id IS N
 3. List the top five offices address with the most amount of employees, order the result by country and display a column with a counter.
 
 ```
-SELECT c.name name, n.address, n.count
-    FROM countries c
-    INNER JOIN (
-        SELECT o.country_id, o.address, count(*) count
-        FROM offices o
-        INNER JOIN employees e
-        ON  o.id = e.office_id
-        GROUP BY o.id
-    ) n
-    ON c.id = n.country_id
-    ORDER BY count DESC
-    LIMIT 5 ;
+SELECT
+    c.name AS country_name,
+    o.address,
+    COUNT(e.id) AS employee_count
+FROM countries c
+JOIN offices o
+    ON c.id = o.country_id
+JOIN employees e
+    ON o.id = e.office_id
+GROUP BY c.id, o.id
+ORDER BY employee_count DESC
+LIMIT 5;
 ```
 
 <p align="center">
@@ -130,6 +132,25 @@ LIMIT 3;
 
 <p align="center">
  <img src="src/results/result4.png" alt="result_4"/>
+</p>
+
+This query is correct but in other case, this maybe could include the supervisor name
+
+```
+SELECT
+    e.id supervisor_id,
+    e.first_name || ' ' || e.last_name AS supervisor_name,
+    COUNT(*)
+FROM employees e
+INNER JOIN employees m
+ON e.id = m.supervisor_id
+GROUP BY e.id
+ORDER BY count DESC
+LIMIT 3;
+```
+
+<p align="center">
+ <img src="src/results/result4_user.png" alt="result_4-user-friendly"/>
 </p>
 
 5. How many offices are in the state of Colorado (United States).
@@ -153,9 +174,9 @@ WHERE state_id = (
 ```
 SELECT o.name name, COUNT(*)
 FROM offices o
-INNER JOIN employees e ON o.id = e.office_id
+LEFT JOIN employees e ON o.id = e.office_id
 GROUP BY o.id
-ORDER BY count DESC
+ORDER BY count DESC;
 ```
 
 <p align="center">
@@ -211,4 +232,31 @@ ON e.office_id = o.id;
 
 <p align="center">
  <img src="src/results/result8.png" alt="result_8"/>
+</p>
+
+Another option is to use a `LEFT JOIN` instead of an `INNER JOIN` to include the bosses in the result set.
+
+```
+SELECT
+    e.uuid,
+    e.first_name || ' ' || e.last_name AS full_name,
+    e.email,
+    e.job_title,
+    o.name AS company,
+    c.name AS country,
+    s.name AS state,
+    COALESCE(b.first_name, '<NO BOSS>') AS boss_name
+FROM employees e
+LEFT JOIN employees b
+    ON e.supervisor_id = b.id
+LEFT JOIN offices o
+    ON e.office_id = o.id
+LEFT JOIN states s
+    ON o.state_id = s.id
+LEFT JOIN countries c
+    ON s.country_id = c.id;
+```
+
+<p align="center">
+ <img src="src/results/result8_with_bosses.png" alt="result_8 including bosses"/>
 </p>
