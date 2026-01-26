@@ -2,7 +2,7 @@
 -- 1
 SELECT 
     c.name, 
-    count(*) 
+    count(*) AS states_count
 FROM countries c 
 INNER JOIN states s 
 ON c.id = s.country_id 
