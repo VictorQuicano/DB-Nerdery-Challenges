@@ -109,55 +109,52 @@ LIMIT 5;
 ```
 
 4. Get the three users with the most money after making movements.
+   > **NOTE**:
+   > For both excercises, 4th an 7th, I implement a temporal table
 
 ```
-WITH InitialBalances AS (
-    SELECT user_id, SUM(mount) as initial_total
-    FROM accounts
-    GROUP BY user_id
-),
-Outflow AS (
-    SELECT a.user_id, SUM(m.mount) as total_sent
-    FROM movements m
-    JOIN accounts a ON m.account_from = a.id
-    WHERE m.type NOT IN ('IN')
-    GROUP BY a.user_id
-),
-Inflow AS (
-    SELECT a.user_id, SUM(m.mount) as total_received
+CREATE TEMP TABLE temp_user_balances AS
+WITH Inflow AS (
+    SELECT a.user_id, SUM(m.mount) AS total_received
     FROM movements m
     JOIN accounts a ON m.account_to = a.id
     GROUP BY a.user_id
 ),
 Deposits AS (
-    SELECT a.user_id, SUM(m.mount) as total_deposits
+    SELECT a.user_id, SUM(m.mount) AS total_deposits
     FROM movements m
     JOIN accounts a ON m.account_from = a.id
     WHERE m.type IN ('IN')
     GROUP BY a.user_id
+),
+InitialBalances AS (
+    SELECT user_id, SUM(mount) AS initial_total
+    FROM accounts
+    GROUP BY user_id
 )
 SELECT
-    u.id,
-    u.name,
-    u.last_name,
+    u.*,
     (
-        COALESCE(ib.initial_total, 0) +
-        COALESCE(inf.total_received, 0) -
-        COALESCE(outf.total_sent, 0) +
-        COALESCE(dep.total_deposits, 0)
-    ) AS current_balance,
-    ib.initial_total AS initial_balance,
-    outf.total_sent AS total_outflow,
-    inf.total_received AS total_inflow,
-    dep.total_deposits AS total_deposits
+        COALESCE(ib.initial_total, 0)
+      + COALESCE(inf.total_received, 0)
+      + COALESCE(dep.total_deposits, 0)
+    ) AS total_balance
 FROM users u
 LEFT JOIN InitialBalances ib ON u.id = ib.user_id
-LEFT JOIN Outflow outf ON u.id = outf.user_id
 LEFT JOIN Inflow inf ON u.id = inf.user_id
-LEFT JOIN Deposits dep ON u.id = dep.user_id
-ORDER BY current_balance DESC
-LIMIT 3;
+LEFT JOIN Deposits dep ON u.id = dep.user_id;
+```
 
+Then, using that temp table the final query is:
+
+```
+SELECT
+    name || ' ' || last_name AS user_full_name,
+    email,
+    total_balance
+FROM temp_user_balances
+ORDER BY total_balance DESC
+LIMIT 3;
 ```
 
 5.  In this part you need to create a transaction with the following steps:
@@ -177,7 +174,7 @@ LIMIT 3;
     d. Put your answer here if the transaction fails(YES/NO):
 
     ```
-        NO
+        YES
     ```
 
     e. If the transaction fails, make the correction on step _c_ to avoid the failure:
@@ -201,40 +198,27 @@ LIMIT 3;
 6.  All the movements and the user information with the account `3b79e403-c788-495a-a8ca-86ad7643afaf`
 
 ```
-
-SELECT u.name || ' ' || u.last_name as account_user, m.type, m.mount FROM users u INNER JOIN accounts a ON a.user_id = u.id LEFT JOIN movements m ON a.id = m.account_f
-rom or a.id = m.account_to WHERE a.id = '3b79e403-c788-495a-a8ca-86ad7643afaf';
+SELECT
+    u.name || ' ' || u.last_name as account_user,
+    u.email,
+    a.account_id,
+    m.type,
+    m.mount
+FROM users u
+INNER JOIN accounts a ON a.user_id = u.id
+LEFT JOIN movements m ON a.id = m.account_from or a.id = m.account_to
+WHERE a.id = '3b79e403-c788-495a-a8ca-86ad7643afaf';
 ```
 
 7. The name and email of the user with the highest money in all his/her accounts
+   > **NOTE:** Using the temporal table created before
 
 ```
-WITH Inflow AS (
-    SELECT a.user_id, SUM(m.mount) as total_received
-    FROM movements m
-    JOIN accounts a ON m.account_to = a.id
-    GROUP BY a.user_id
-),
-Deposits AS (
-    SELECT a.user_id, SUM(m.mount) as total_deposits
-    FROM movements m
-    JOIN accounts a ON m.account_from = a.id
-    WHERE m.type IN ('IN')
-    GROUP BY a.user_id
-),
-InitialBalances AS (
-    SELECT user_id, SUM(mount) as initial_total
-    FROM accounts
-    GROUP BY user_id
-) SELECT u.name || ' ' || u.last_name as user_full_name,
-    u.email,
-    (COALESCE(ib.initial_total, 0) +
-    COALESCE(inf.total_received, 0) +
-    COALESCE(dep.total_deposits, 0)) AS total_balance
-FROM users u
-LEFT JOIN InitialBalances ib ON u.id = ib.user_id
-LEFT JOIN Inflow inf ON u.id = inf.user_id
-LEFT JOIN Deposits dep ON u.id = dep.user_id
+SELECT
+    name || ' ' || last_name as user_full_name,
+    email,
+    total_balance
+FROM temp_user_balances
 ORDER BY total_balance DESC
 LIMIT 1;
 ```
@@ -246,12 +230,14 @@ SELECT
     a.type,
     m.created_at,
     m.mount
-FROM accounts a
+FROM users u
+JOIN accounts a
+    ON a.user_id = u.id
 JOIN movements m
-ON
-    m.account_from = a.id
-    or
-    m.account_to = a.id
-LEFT JOIN users u ON a.user_id = u.id
-where email ILIKE 'Kaden.Gusikowski@gmail.com';
+    ON m.account_from = a.id
+    OR m.account_to = a.id
+WHERE u.email ILIKE 'Kaden.Gusikowski@gmail.com'
+ORDER BY
+    a.type,
+    m.created_at;
 ```
