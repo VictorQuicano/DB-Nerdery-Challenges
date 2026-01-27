@@ -50,14 +50,14 @@ CREATE TABLE users (
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role_id UUID NOT NULL,
+    role_id UUID,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_users_roles
         FOREIGN KEY (role_id)
         REFERENCES roles(id)
-        ON DELETE RESTRICT
+        ON DELETE SET NULL
         ON UPDATE CASCADE,
 
     CONSTRAINT chk_email_format
@@ -82,10 +82,10 @@ CREATE TABLE products (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     price DOUBLE PRECISION NOT NULL,
-    available BOOLEAN DEFAULT true,
     category_id UUID NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP DEFAULT NULL,
 
     CONSTRAINT fk_products_categories
         FOREIGN KEY (category_id)
@@ -96,6 +96,23 @@ CREATE TABLE products (
     CONSTRAINT chk_price_positive CHECK (price >= 0),
     CONSTRAINT chk_name_not_empty CHECK (name <> '')
 );
+
+CREATE TABLE stock_levels (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id UUID NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_stock_levels_products
+        FOREIGN KEY (product_id)
+        REFERENCES products(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT chk_quantity_non_negative CHECK (quantity >= 0)
+);
+
 
 -- Create product_images table
 CREATE TABLE product_images (
@@ -151,7 +168,6 @@ CREATE TABLE discounts (
     value DECIMAL(10,2) NOT NULL,
     starts_at TIMESTAMP NOT NULL,
     expires_at TIMESTAMP,
-    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -192,12 +208,12 @@ CREATE TABLE carts (
 CREATE TABLE cart_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     cart_id UUID NOT NULL,
-    item_id UUID NOT NULL,
+    product_id UUID NOT NULL,
     quantity INTEGER NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT uq_cart_item UNIQUE(cart_id, item_id),
+    CONSTRAINT uq_cart_item UNIQUE(cart_id, product_id),
 
     CONSTRAINT fk_cart_items_carts
         FOREIGN KEY (cart_id)
@@ -206,7 +222,7 @@ CREATE TABLE cart_items (
         ON UPDATE CASCADE,
 
     CONSTRAINT fk_cart_items_products
-        FOREIGN KEY (item_id)
+        FOREIGN KEY (product_id)
         REFERENCES products(id)
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
@@ -236,26 +252,31 @@ CREATE TABLE orders (
 -- Order items
 CREATE TABLE order_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
     order_id UUID NOT NULL,
-    item_id UUID NOT NULL,
+
+    product_id UUID,
+
+    product_name VARCHAR(255) NOT NULL,
+    product_description TEXT,
+    product_price DECIMAL(10,2) NOT NULL,
+    product_category_id UUID,
+
     quantity INTEGER NOT NULL,
-    price DECIMAL(10,2),
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_product_id_orders
+        FOREIGN KEY (product_id)
+        REFERENCES products(id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE,
 
     CONSTRAINT fk_order_items_orders
         FOREIGN KEY (order_id)
         REFERENCES orders(id)
         ON DELETE CASCADE
-        ON UPDATE CASCADE,
-
-    CONSTRAINT fk_order_items_products
-        FOREIGN KEY (item_id)
-        REFERENCES products(id)
-        ON DELETE RESTRICT
-        ON UPDATE CASCADE,
-
-    CONSTRAINT chk_order_quantity_positive CHECK (quantity > 0)
 );
 
 -- STRIPE TABLES
@@ -267,6 +288,7 @@ CREATE TYPE payment_status AS ENUM(
   'CANCELLED',
   'REFUNDED'
 );
+
 CREATE TABLE payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id UUID NOT NULL,
@@ -320,17 +342,16 @@ CREATE TABLE payment_intents (
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_role_id ON users(role_id);
 CREATE INDEX idx_products_category_id ON products(category_id);
-CREATE INDEX idx_products_available ON products(available) WHERE available = true;
 CREATE INDEX idx_product_images_product_id ON product_images(product_id);
 CREATE INDEX idx_liked_products_user_id ON liked_products(user_id);
 CREATE INDEX idx_liked_products_product_id ON liked_products(product_id);
 CREATE INDEX idx_carts_user_id ON carts(user_id);
 CREATE INDEX idx_cart_items_cart_id ON cart_items(cart_id);
-CREATE INDEX idx_cart_items_item_id ON cart_items(item_id);
+CREATE INDEX idx_cart_items_item_id ON cart_items(product_id);
 CREATE INDEX idx_orders_user_id ON orders(user_id);
 CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_order_items_order_id ON order_items(order_id);
-CREATE INDEX idx_order_items_item_id ON order_items(item_id);
+CREATE INDEX idx_order_items_product_id ON order_items(product_id);
 CREATE INDEX idx_role_permissions_role_id ON role_permissions(role_id);
 CREATE INDEX idx_role_permissions_permission_id ON role_permissions(permission_id);
 CREATE INDEX idx_products_name ON products(name);
