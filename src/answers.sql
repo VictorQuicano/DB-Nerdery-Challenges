@@ -4,7 +4,7 @@ SELECT
     c.name, 
     count(*) AS states_count
 FROM countries c 
-INNER JOIN states s 
+LEFT JOIN states s 
 ON c.id = s.country_id 
 GROUP BY c.name ;
 

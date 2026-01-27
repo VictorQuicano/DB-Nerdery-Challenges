@@ -210,24 +210,24 @@ LIMIT 1
 8. Show the uuid of the employee, first_name and lastname combined, email, job_title, the name of the office they belong to, the name of the country, the name of the state and the name of the boss (boss_name)
 
 ```
-SELECT e.uuid, e.full_name, e.email, e.job_title, o.company, o.country, o.state, e.boss_name
-FROM (
-    SELECT e.uuid, e.first_name || ' ' || e.last_name full_name, e.email, e.job_title, s.first_name boss_name, e.office_id
-    FROM employees e
-    INNER JOIN employees s
-    ON e.supervisor_id = s.id
-) e
-LEFT JOIN (
-    SELECT o.id, o.name company, s.country country, s.state state
-    FROM offices o
-    INNER JOIN (
-        SELECT s.id state_id, s.name state, c.name country
-        FROM states s
-        INNER JOIN countries c
-        ON s.country_id = c.id
-    ) s
-    ON o.state_id = s.state_id) o
-ON e.office_id = o.id;
+SELECT
+    e.uuid,
+    e.first_name || ' ' || e.last_name AS full_name,
+    e.email,
+    e.job_title,
+    o.name AS company,
+    c.name AS country,
+    s.name AS state,
+    b.first_name AS boss_name
+FROM employees e
+INNER JOIN employees b
+    ON e.supervisor_id = b.id
+LEFT JOIN offices o
+    ON e.office_id = o.id
+LEFT JOIN states s
+    ON o.state_id = s.id
+LEFT JOIN countries c
+    ON s.country_id = c.id;
 ```
 
 <p align="center">
