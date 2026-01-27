@@ -110,7 +110,7 @@ LIMIT 5;
 
 4. Get the three users with the most money after making movements.
    > **NOTE**:
-   > For both excercises, 4th an 7th, I implement a temporal table
+   > For exercises 4 and 7, I implemented a temporary table.
 
 ```
 CREATE TEMP TABLE temp_user_balances AS
@@ -211,7 +211,7 @@ WHERE a.id = '3b79e403-c788-495a-a8ca-86ad7643afaf';
 ```
 
 7. The name and email of the user with the highest money in all his/her accounts
-   > **NOTE:** Using the temporal table created before
+   > **NOTE:** Using the temporary table created earlier.
 
 ```
 SELECT

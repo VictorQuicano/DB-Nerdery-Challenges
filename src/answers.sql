@@ -22,52 +22,44 @@ ORDER BY mount DESC
 LIMIT 5;
 
 -- 4
-
-WITH InitialBalances AS (
-    SELECT user_id, SUM(mount) as initial_total
-    FROM accounts
-    GROUP BY user_id
-),
-Outflow AS (
-    SELECT a.user_id, SUM(m.mount) as total_sent
-    FROM movements m
-    JOIN accounts a ON m.account_from = a.id
-    WHERE m.type NOT IN ('IN')
-    GROUP BY a.user_id
-),
-Inflow AS (
-    SELECT a.user_id, SUM(m.mount) as total_received
+CREATE TEMP TABLE temp_user_balances AS
+WITH Inflow AS (
+    SELECT a.user_id, SUM(m.mount) AS total_received
     FROM movements m
     JOIN accounts a ON m.account_to = a.id
     GROUP BY a.user_id
 ),
 Deposits AS (
-    SELECT a.user_id, SUM(m.mount) as total_deposits
+    SELECT a.user_id, SUM(m.mount) AS total_deposits
     FROM movements m
     JOIN accounts a ON m.account_from = a.id
     WHERE m.type IN ('IN')
     GROUP BY a.user_id
+),
+InitialBalances AS (
+    SELECT user_id, SUM(mount) AS initial_total
+    FROM accounts
+    GROUP BY user_id
 )
-SELECT 
-    u.id, 
-    u.name, 
-    u.last_name,
+SELECT
+    u.*,
     (
-        COALESCE(ib.initial_total, 0) + 
-        COALESCE(inf.total_received, 0) - 
-        COALESCE(outf.total_sent, 0) +
-        COALESCE(dep.total_deposits, 0)
-    ) AS current_balance,
-    ib.initial_total AS initial_balance,
-    outf.total_sent AS total_outflow,
-    inf.total_received AS total_inflow,
-    dep.total_deposits AS total_deposits
+        COALESCE(ib.initial_total, 0)
+      + COALESCE(inf.total_received, 0)
+      + COALESCE(dep.total_deposits, 0)
+    ) AS total_balance
 FROM users u
 LEFT JOIN InitialBalances ib ON u.id = ib.user_id
-LEFT JOIN Outflow outf ON u.id = outf.user_id
 LEFT JOIN Inflow inf ON u.id = inf.user_id
-LEFT JOIN Deposits dep ON u.id = dep.user_id
-ORDER BY current_balance DESC
+LEFT JOIN Deposits dep ON u.id = dep.user_id;
+
+
+SELECT 
+    name || ' ' || last_name AS user_full_name,
+    email, 
+    total_balance
+FROM temp_user_balances
+ORDER BY total_balance DESC
 LIMIT 3;
 
 
@@ -136,7 +128,7 @@ LIMIT 3;
             RAISE NOTICE 'Transaction Failed: Rolling back changes. Error: %', SQLERRM;
             ROLLBACK;
     END $$;
-
+    COMMIT;
 
 -- 6
 SELECT 
@@ -156,6 +148,13 @@ WITH Inflow AS (
     SELECT a.user_id, SUM(m.mount) as total_received
     FROM movements m
     JOIN accounts a ON m.account_to = a.id
+    GROUP BY a.user_id
+),
+Outflow AS (
+    SELECT a.user_id, SUM(m.mount) as total_sent
+    FROM movements m
+    JOIN accounts a ON m.account_from = a.id
+    WHERE m.type NOT IN ('IN')
     GROUP BY a.user_id
 ),
 Deposits AS (
